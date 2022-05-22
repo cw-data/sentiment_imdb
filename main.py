@@ -1,5 +1,7 @@
 #  data from https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews?resource=download
-# protocol from https://towardsdatascience.com/a-beginners-guide-to-text-classification-with-scikit-learn-632357e16f3a
+#  protocol from https://towardsdatascience.com/a-beginners-guide-to-text-classification-with-scikit-learn-632357e16f3a
+
+# a project from https://towardsdatascience.com/5-solved-end-to-end-data-science-projects-in-python-acdc347f36d0
 
 import pandas as pd
 df_review = pd.read_csv('imdb_dataset.csv')
@@ -29,7 +31,7 @@ train_x_vector
 
 pd.DataFrame.sparse.from_spmatrix(train_x_vector,
                                   index=train_x.index,
-                                  columns=tfidf.get_feature_names())
+                                  columns=tfidf.get_feature_names_out())
 
 test_x_vector = tfidf.transform(test_x)
 
@@ -47,15 +49,27 @@ from sklearn.tree import DecisionTreeClassifier
 dec_tree = DecisionTreeClassifier()
 dec_tree.fit(train_x_vector, train_y)
 
+print(dec_tree.predict(tfidf.transform(['A good movie'])))
+print(dec_tree.predict(tfidf.transform(['An excellent movie'])))
+print(dec_tree.predict(tfidf.transform(['I did not like this movie at all'])))
+
 # fit a naive Bayes model
 from sklearn.naive_bayes import GaussianNB
 gnb = GaussianNB()
 gnb.fit(train_x_vector.toarray(), train_y)
 
+print(gnb.predict(tfidf.transform(['A good movie']).toarray()))  # this must be transformed from sparse matrix to dense data via x.toarray()
+print(gnb.predict(tfidf.transform(['An excellent movie']).toarray()))  # this must be transformed from sparse matrix to dense data via x.toarray()
+print(gnb.predict(tfidf.transform(['I did not like this movie at all']).toarray()))  # this must be transformed from sparse matrix to dense data via x.toarray()
+
 # fit logistic regression model
 from sklearn.linear_model import LogisticRegression
 log_reg = LogisticRegression()
 log_reg.fit(train_x_vector, train_y)
+
+print(log_reg.predict(tfidf.transform(['A good movie'])))
+print(log_reg.predict(tfidf.transform(['An excellent movie'])))
+print(log_reg.predict(tfidf.transform(['I did not like this movie at all'])))
 
 # Evaluate models
 # Which model is the most accurate, on average?
@@ -88,6 +102,7 @@ from sklearn.metrics import confusion_matrix
 conf_mat = confusion_matrix(test_y,
                             svc.predict(test_x_vector),
                             labels=['positive', 'negative'])
+print(conf_mat)
 
 # Model tuning
 # maximize the model performance with GridSearchCV
@@ -98,6 +113,8 @@ svc = SVC()
 svc_grid = GridSearchCV(svc,parameters, cv=5)
 
 svc_grid.fit(train_x_vector, train_y)
-svc.score(test_x_vector, test_y)
+# GridSearchCV(cv=5, estimator=SVC(),
+#              param_grid={'C': [1, 4, 8, 16, 32], 'kernel': ['linear', 'rbf']})
+# svc.score(test_x_vector, test_y)
 print(svc_grid.best_params_)
 print(svc_grid.best_estimator_)
