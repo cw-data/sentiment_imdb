@@ -1,13 +1,27 @@
 ---
 title: "Predicting the sentiment of movie reviews with machine learning"
 author: "Charles Wainright"
-date: "`r Sys.Date()`"
+date: "`r format(Sys.Date(), '%m %b, %Y')`"
 output: html_document
 ---
-```{r setup, include=FALSE}
+```{r, warning = FALSE, message = FALSE}
 library(reticulate)
 library(tidyverse)
 library(gt)
+library(cvms)
+set.seed(1)
+```
+
+```{python}
+import pandas as pd
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
 ```
 
 # Introduction
@@ -37,7 +51,6 @@ Binary predictions: either 'positive' or 'negative'.
 #### Data
 
 ```{python, include = FALSE}
-import pandas as pd
 df_review = pd.read_csv('imdb_dataset.csv')
 nrows = df_review.shape[0]
 ncols = df_review.shape[1]
@@ -107,7 +120,7 @@ train_x, train_y = train['review'], train['sentiment']
 test_x, test_y = test['review'], test['sentiment']
 ```
 
-Next, I prepared the data for modelling. To model natural language text predictions, I needed to transform text into a numeric representation of its frequency. I used scikit-learn's term frequency-inverse document frequency (TF-IDF) vectorizer for these frequency calculations. In this approach, a word's TF-IDF score increases as its frequency increases within documents but its score decreases if that word is common among documents. TD-IDF makes it possible for model algorithms to distinguish between important words and common words.
+Next, I prepared the data for modelling. To model natural language text predictions, I needed to transform words from the text reviews into a numeric representation of its frequency. I used scikit-learn's term frequency-inverse document frequency (TF-IDF) vectorizer for these frequency calculations. In this approach, a word's TF-IDF score increases as its frequency increases within documents but its score decreases if that word is common among documents.
 
 ```{python}
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -129,7 +142,7 @@ I trained four natural language text analysis models:
 3. Naive Bayes
 4. Logistic regression
 
-```{python}
+```{python, echo = FALSE}
 # 1) support-vector machine learning model (SVM)
 from sklearn.svm import SVC
 svc = SVC(kernel='linear')
@@ -151,26 +164,28 @@ log_reg = LogisticRegression()
 log_reg.fit(train_x_vector, train_y)
 ```
 
-# Results
-
-First, I tested that each model generated a prediction given a set of fake reviews. Each model predicts either 'positive' or 'negative' given a string of text:
+Finally, I tested that each model generated a prediction given a set of fake reviews. Each model predicts either 'positive' or 'negative' given a string of text:
 ```{python}
 # 1) support-vector machine learning model (SVML)
 print(svc.predict(tfidf.transform(['A good movie'])))
 print(svc.predict(tfidf.transform(['I did not like this movie at all'])))
-
+```
+```{python}
 # 2) classification tree
 print(dec_tree.predict(tfidf.transform(['A good movie'])))
 print(dec_tree.predict(tfidf.transform(['I did not like this movie at all'])))
-
+```
+```{python}
 # 3) naive Bayes model
-print(gnb.predict(tfidf.transform(['A good movie']).toarray()))  # this must be transformed from sparse matrix to dense data via x.toarray()
-print(gnb.predict(tfidf.transform(['I did not like this movie at all']).toarray()))  # this must be transformed from sparse matrix to dense data via x.toarray()
-
+print(gnb.predict(tfidf.transform(['A good movie']).toarray()))  # must be transformed: sparse matrix to dense data via x.toarray()
+print(gnb.predict(tfidf.transform(['I did not like this movie at all']).toarray()))  # must be transformed: sparse matrix to dense data via x.toarray()
+```
+```{python}
 # 4) logistic regression model
 print(log_reg.predict(tfidf.transform(['A good movie'])))
 print(log_reg.predict(tfidf.transform(['I did not like this movie at all'])))
 ```
+# Results
 
 Next, I extracted the mean accuracy of each model:
 ```{python}
@@ -180,7 +195,7 @@ gnb_score = gnb.score(test_x_vector.toarray(), test_y)
 log_reg_score = log_reg.score(test_x_vector, test_y)
 ```
 
-```{r, include = FALSE}
+```{r, echo = FALSE}
 scores_df <- data.frame(model = c('Support vector ML', 'Decision tree', 'Naive Bayes', 'Logistic regression'),
                         score = c(py$svc_score, py$dec_score, py$gnb_score, py$log_reg_score))
 
@@ -188,8 +203,8 @@ scores_df %>%
   arrange(desc(score)) %>%
   gt() %>%
   tab_header(
-    title = "Mean accuracy of sentiment predictions",
-    subtitle = "Four machine learning models"
+    title = "",
+    subtitle = "Table 1. Mean prediction accuracy of four movie review sentiment machine learning models"
   ) %>%
   fmt_number(
     columns = c(score),
@@ -204,7 +219,7 @@ scores_df %>%
     columns = c(score)
   )
 ```
-Support vector machine learning (SVML) and logistic regression were similarly accurate (0.84 and 0.83, respectively; Table 1). Decision tree and Naive Bayes modelling were considerably less accurate than SVML or logistic regression. Next, I further investigated the SVML model's accuracy.
+Support vector machine learning (SVML) and logistic regression were similarly accurate (`r round(py$svc_score, 2)` and `r round(py$log_reg_score, 2)`, respectively; Table 1). Decision tree and Naive Bayes modelling were considerably less accurate than SVML or logistic regression. Since the SVML model had the highest mean prediction accuracy, I extracted more of its accuracy metrics.
 
 ```{python, include = FALSE}
 from sklearn.metrics import f1_score
@@ -213,7 +228,7 @@ svml_f1_scores = f1_score(test_y, svc.predict(test_x_vector),
                           average=None)
 ```
 
-The SVML model had high F1 scores for both positive and negative sentiment reviews. The SVML had a positive F1 score of `r round(py$svml_f1_scores[1], 2)` and a negative F1 score of `r round(py$svml_f1_scores[2], 2)`.
+The SVML model had high (i.e., near 1) F1 scores for both positive and negative sentiment reviews, which reinforces this model's prediction accuracy. The SVML model had a positive sentiment F1 score of `r round(py$svml_f1_scores[1], 2)` and a negative sentiment F1 score of `r round(py$svml_f1_scores[2], 2)`.
 
 ```{python}
 from sklearn.metrics import classification_report
@@ -232,16 +247,35 @@ conf_mat = confusion_matrix(test_y,
                             labels=['positive', 'negative'])
 ```
 
-```{python, include = FALSE}
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-ConfusionMatrixDisplay(confusion_matrix = conf_mat)
-# plt.title('Confusion matrix of SVML model')
-# plt.xlabel('Predicted')
-# plt.ylabel('True')
-# plt.show()
+
+```{r, echo = FALSE}
+intermediate <- 
+  as.data.frame(py$conf_mat)%>%
+  pivot_longer(c("V1", "V2"))
+
+intermediate$name <- NULL
+intermediate$target <- c('negative', 'positive', 'negative', 'positive')
+intermediate$prediction <- c('negative', 'negative', 'positive', 'positive')
+
+true_pos <- as.numeric(ifelse(intermediate$target == 'positive' & intermediate$prediction == 'positive', intermediate$value, ""))
+true_pos <- subset(true_pos, !is.na(true_pos))
+false_pos <- as.numeric(ifelse(intermediate$target == 'positive' & intermediate$prediction == 'negative', intermediate$value, ""))
+false_pos <- subset(false_pos, !is.na(false_pos))
+true_neg <- as.numeric(ifelse(intermediate$target == 'negative' & intermediate$prediction == 'negative', intermediate$value, ""))
+true_neg <- subset(true_neg, !is.na(true_neg))
+false_neg <- as.numeric(ifelse(intermediate$target == 'negative' & intermediate$prediction == 'positive', intermediate$value, ""))
+false_neg <- subset(false_neg, !is.na(false_neg))
+observations <- sum(intermediate$value)
 ```
 
+A confusion matrix provides context for the SVM model accuracy metrics. In the middle of each tile, we have the normalized count (overall percentage) and, beneath it, the count. At the bottom, we have the column percentage. Of all the observations where the `Target` outcome was `positive`, the SVM model predicted `r sprintf("%0.1f%%", 100*(true_pos/observations))` (`r true_pos` of `r observations`) to be `positive` and `r sprintf("%0.1f%%", 100*(false_pos/observations))` (`r false_pos` of `r observations`) to be `negative`. Of all the observations where the `Target` outcome was `negative`, the SVM model predicted `r sprintf("%0.1f%%", 100*(true_neg/observations))` (`r true_neg` of `r observations`) to be `negative` and `r sprintf("%0.1f%%", 100*(false_neg/observations))` (`r false_neg` of `r observations`) to be `positive`.
+
+```{r, echo = FALSE, warning = FALSE}
+plot_confusion_matrix(intermediate, 
+                      target_col = "target", 
+                      prediction_col = "prediction",
+                      counts_col = "value")
+```
 
 ```{python}
 # Model tuning
@@ -251,6 +285,7 @@ from sklearn.model_selection import GridSearchCV
 parameters = {'C': [1,4,8,16,32] ,'kernel':['linear', 'rbf']}
 svc = SVC()
 svc_grid = GridSearchCV(svc,parameters, cv=5)
+
 ```
 
 ```{python}
