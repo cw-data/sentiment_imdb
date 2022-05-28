@@ -30,25 +30,19 @@ This project combines several data science programming languages, principles, an
 
 # Methods
 
-I created four machine learning models to predict the sentiment (positive or negative) of movie reviews from IMDB.
-
-I used a set of reviews with pre-determined reviewer sentiment to train each model.
-
-I used a test dataset to evaluate how accurately each model predicted reviewer sentiment.
-
-I tuned the most accurate model to maximize the accuracy of my sentiment predictions.
+I created four machine learning models to predict the sentiment (positive or negative) of movie reviews from IMDB. First, I trained the models with a subset of reviews with known review sentiment. Next, I tested model accuracy by predicting review sentiment and comparing determining whether the prediction was correct or incorrect. Then, I selected the most accurate model and tuned its parameters to produce the best possible prediction accuracy.
 
 
-#### Research question:
+### Research question
 Which machine learning model is most accurate at predicting the reviewer's sentiment given a text review of a movie?
 
-#### Model inputs
+### Model inputs
 Text movie reviews.
 
-#### Model outputs
+### Model outputs
 Binary predictions: either 'positive' or 'negative'.
 
-#### Data
+### Data
 
 ```{python, include = FALSE}
 df_review = pd.read_csv('imdb_dataset.csv')
@@ -64,7 +58,7 @@ The dataset contains `r format(as.numeric(py$nrows), big.mark=",")` rows and `r 
 df_review
 ```
 
-The dataset started with a balanced number of positive and negative reviews. 
+
 
 ```{r, include = FALSE}
 py$df_review %>%
@@ -74,7 +68,7 @@ py$df_review %>%
   )
 ```
 
-To replicate a step I'd expect to encounter with real data, I imbalanced the samples and then re-balanced them through random re-sampling.
+The dataset started with a balanced number of positive and negative reviews. Since real data may not be perfectly balanced, I imbalanced the samples and then re-balanced them through random re-sampling.
 
 First, I imbalanced the reviews by selecting a different number of positive and negative reviews:
 
@@ -143,7 +137,7 @@ I trained four natural language text analysis models:
 4. Logistic regression
 
 ```{python, echo = FALSE}
-# 1) support-vector machine learning model (SVM)
+# 1) support-vector machine learning (SVML) model 
 from sklearn.svm import SVC
 svc = SVC(kernel='linear')
 svc.fit(train_x_vector, train_y)
@@ -166,7 +160,7 @@ log_reg.fit(train_x_vector, train_y)
 
 Finally, I tested that each model generated a prediction given a set of fake reviews. Each model predicts either 'positive' or 'negative' given a string of text:
 ```{python}
-# 1) support-vector machine learning model (SVML)
+# 1) support-vector machine learning (SVML) model
 print(svc.predict(tfidf.transform(['A good movie'])))
 print(svc.predict(tfidf.transform(['I did not like this movie at all'])))
 ```
@@ -187,14 +181,14 @@ print(log_reg.predict(tfidf.transform(['I did not like this movie at all'])))
 ```
 # Results
 
-Next, I extracted the mean accuracy of each model:
+
 ```{python}
 svc_score = svc.score(test_x_vector, test_y)
 dec_score = dec_tree.score(test_x_vector, test_y)
 gnb_score = gnb.score(test_x_vector.toarray(), test_y)
 log_reg_score = log_reg.score(test_x_vector, test_y)
 ```
-
+Support vector machine learning (SVML) and logistic regression were similarly accurate (`r round(py$svc_score, 2)` and `r round(py$log_reg_score, 2)`, respectively; Table 1). Decision tree and Naive Bayes modelling were considerably less accurate than SVML or logistic regression. Since the SVML model had the highest mean prediction accuracy, I extracted more of its accuracy metrics.
 ```{r, echo = FALSE}
 scores_df <- data.frame(model = c('Support vector ML', 'Decision tree', 'Naive Bayes', 'Logistic regression'),
                         score = c(py$svc_score, py$dec_score, py$gnb_score, py$log_reg_score))
@@ -219,7 +213,7 @@ scores_df %>%
     columns = c(score)
   )
 ```
-Support vector machine learning (SVML) and logistic regression were similarly accurate (`r round(py$svc_score, 2)` and `r round(py$log_reg_score, 2)`, respectively; Table 1). Decision tree and Naive Bayes modelling were considerably less accurate than SVML or logistic regression. Since the SVML model had the highest mean prediction accuracy, I extracted more of its accuracy metrics.
+
 
 ```{python, include = FALSE}
 from sklearn.metrics import f1_score
@@ -268,7 +262,8 @@ false_neg <- subset(false_neg, !is.na(false_neg))
 observations <- sum(intermediate$value)
 ```
 
-A confusion matrix provides context for the SVM model accuracy metrics. In the middle of each tile, we have the normalized count (overall percentage) and, beneath it, the count. At the bottom, we have the column percentage. Of all the observations where the `Target` outcome was `positive`, the SVM model predicted `r sprintf("%0.1f%%", 100*(true_pos/observations))` (`r true_pos` of `r observations`) to be `positive` and `r sprintf("%0.1f%%", 100*(false_pos/observations))` (`r false_pos` of `r observations`) to be `negative`. Of all the observations where the `Target` outcome was `negative`, the SVM model predicted `r sprintf("%0.1f%%", 100*(true_neg/observations))` (`r true_neg` of `r observations`) to be `negative` and `r sprintf("%0.1f%%", 100*(false_neg/observations))` (`r false_neg` of `r observations`) to be `positive`.
+A confusion matrix provides context for the SVM model accuracy metrics and provide counts and percentages of true positives, true negatives, false positives, and false negatives. Confusion matrices summarize this context as an overall percentage and count in the center of each tile and row or column percentages on the edge of each tile. Of the `r true_pos + false_pos` observations where the `Target` outcome was `positive`, the SVM model predicted `r true_pos` to be `positive`, yielding a true positive rate of `r sprintf("%0.1f%%", 100*(true_pos/(true_pos + false_pos)))`. The remaining `r false_pos` `positive` predictions were false positives, yielding a false-positive rate of `r sprintf("%0.1f%%", 100*(false_pos/(false_pos + true_pos)))`. Of the `r true_neg + false_neg` observations where the `Target` outcome was `negative`, the SVM model predicted `r true_neg` to be `negative`, yielding a true negative rate of `r sprintf("%0.1f%%", 100*(true_neg/(true_neg + false_neg)))`. The remaining `r false_neg` `negative` predictions were false negatives, yielding a false-negative rate of `r sprintf("%0.1f%%", 100*(false_neg/(true_neg + false_neg)))`.
+
 
 ```{r, echo = FALSE, warning = FALSE}
 plot_confusion_matrix(intermediate, 
@@ -285,34 +280,103 @@ from sklearn.model_selection import GridSearchCV
 parameters = {'C': [1,4,8,16,32] ,'kernel':['linear', 'rbf']}
 svc = SVC()
 svc_grid = GridSearchCV(svc,parameters, cv=5)
+svc_grid
+svc_grid.fit(train_x_vector, train_y)
 
+
+print(svc_grid.best_params_)
+print(svc_grid.best_estimator_)
 ```
+Parameterization showed that the best `C` parameter was `1` and the best `kernel` parameter was `linear`. Next, I tuned a new SVML model with these parameters:
+
 
 ```{python}
-
+svc2 = SVC(C = 1, kernel='linear')
+svc2.fit(train_x_vector, train_y)
 ```
+Then, I tested that the new SVML model would predict given text movie reviews and extracted the mean accuracy for the tuned SVML model.
+```{python}
+# tuned support-vector machine learning (SVML) model
+print(svc2.predict(tfidf.transform(['A good movie'])))
+```
+```{python}
+print(svc2.predict(tfidf.transform(['I did not like this movie at all'])))
+```
+```{python, echo = FALSE}
+# extract mean accuracy for SVML2
+svc2_score = svc2.score(test_x_vector, test_y)
+```
+
+Mean prediction accuracy was identical for both SVML models.
+```{r, echo = FALSE}
+
+scores_df2 <- data.frame(model = c('Un-tuned SVML', 'Tuned SVML'),
+                        score = c(py$svc_score, py$svc2_score))
+
+scores_df2 %>%
+  arrange(desc(score)) %>%
+  gt() %>%
+  tab_header(
+    title = "",
+    subtitle = "Table 2. Mean prediction accuracy of un-tuned and tuned SVML models"
+  ) %>%
+  fmt_number(
+    columns = c(score),
+    decimals = 2
+  ) %>%
+  cols_label(
+    model = "Model type",
+    score = "Mean accuracy"
+  ) %>%
+  cols_align(
+    align = c("center"),
+    columns = c(score)
+  )
+```
+
 
 ```{python}
-
+# Confusion matrix for SVML2
+from sklearn.metrics import confusion_matrix
+conf_mat2 = confusion_matrix(test_y,
+                            svc2.predict(test_x_vector),
+                            labels=['positive', 'negative'])
 ```
 
-```{python}
 
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+intermediate2 <- 
+  as.data.frame(py$conf_mat2)%>%
+  pivot_longer(c("V1", "V2"))
+
+intermediate2$name <- NULL
+intermediate2$target <- c('negative', 'positive', 'negative', 'positive')
+intermediate2$prediction <- c('negative', 'negative', 'positive', 'positive')
+
+true_pos2 <- as.numeric(ifelse(intermediate2$target == 'positive' & intermediate2$prediction == 'positive', intermediate2$value, ""))
+true_pos2 <- subset(true_pos2, !is.na(true_pos2))
+false_pos2 <- as.numeric(ifelse(intermediate2$target == 'positive' & intermediate2$prediction == 'negative', intermediate2$value, ""))
+false_pos2 <- subset(false_pos2, !is.na(false_pos2))
+true_neg2 <- as.numeric(ifelse(intermediate2$target == 'negative' & intermediate2$prediction == 'negative', intermediate2$value, ""))
+true_neg2 <- subset(true_neg2, !is.na(true_neg2))
+false_neg2 <- as.numeric(ifelse(intermediate2$target == 'negative' & intermediate2$prediction == 'positive', intermediate2$value, ""))
+false_neg2 <- subset(false_neg2, !is.na(false_neg2))
+observations2 <- sum(intermediate2$value)
+
+plot_confusion_matrix(intermediate2, 
+                      target_col = "target", 
+                      prediction_col = "prediction",
+                      counts_col = "value")
 ```
 
-```{python}
 
-```
 
-```{python}
-
-```
-
+The confusion matrix of the tuned model was identical to the un-tuned model, showing that the un-tuned model was no better (or worse) than the tuned model.
 
 
 # Discussion
 
-
-
-
-The preF1 score, a value between zero and one, is calculated 
+I set out to determine which machine learning model was the most accurate at predicting the reviewer's sentiment given a text review of a movie. My analyses showed that two models were similarly accurate at predicting reviewer sentiment: support vector machine learning (SVML) and logistic regression.  
+  
+  
+I investigated my SVML model for optimization because it was slightly more accurate than logistic regression for my dataset. My un-tuned SVML model had a true positive rate of `r sprintf("%0.1f%%", 100*(true_pos2/(true_pos2 + false_pos)))` and a true negative rate of `r sprintf("%0.1f%%", 100*(true_neg/(true_neg + false_neg)))`, which indicated that my TF-IDF vectorization protocol worked well for movie review sentiment predictions. Surprisingly, tuning my SVML model produced no increase in prediction accuracy or improvement in `true positive` or `true negative` rates. Since tuning provided no appreciable benefit, I could investigate combining multiple models for an ensemble of review-sentiment predictions or I could re-visit my logistic regression model to search for better prediction accuracy.
