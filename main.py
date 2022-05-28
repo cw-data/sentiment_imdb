@@ -111,10 +111,25 @@ from sklearn.model_selection import GridSearchCV
 parameters = {'C': [1,4,8,16,32] ,'kernel':['linear', 'rbf']}
 svc = SVC()
 svc_grid = GridSearchCV(svc,parameters, cv=5)
-
+svc_grid
 svc_grid.fit(train_x_vector, train_y)
-# GridSearchCV(cv=5, estimator=SVC(),
-#              param_grid={'C': [1, 4, 8, 16, 32], 'kernel': ['linear', 'rbf']})
-# svc.score(test_x_vector, test_y)
+
+
 print(svc_grid.best_params_)
 print(svc_grid.best_estimator_)
+
+svc2 = SVC(C = 1, kernel='linear')
+svc2.fit(train_x_vector, train_y)
+
+# tuned support-vector machine learning (SVML) model
+print(svc2.predict(tfidf.transform(['A good movie'])))
+print(svc2.predict(tfidf.transform(['I did not like this movie at all'])))
+
+# extract mean accuracy for SVML2
+svc2_score = svc2.score(test_x_vector, test_y)
+
+# Confusion matrix for SVML2
+from sklearn.metrics import confusion_matrix
+conf_mat2 = confusion_matrix(test_y,
+                            svc2.predict(test_x_vector),
+                            labels=['positive', 'negative'])
