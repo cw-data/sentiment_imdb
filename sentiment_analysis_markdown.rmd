@@ -1,7 +1,6 @@
 ---
 title: "Predicting the sentiment of movie reviews with machine learning"
 author: "Charles Wainright"
-date: "`r format(Sys.Date(), '%m %b, %Y')`"
 output: html_document
 ---
 ```{r, warning = FALSE, message = FALSE}
